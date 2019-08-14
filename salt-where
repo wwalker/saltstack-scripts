@@ -1,0 +1,35 @@
+#!/bin/bash -e
+
+usage() {
+  echo "salt-where lists minions that would run a given state based on top/top.sls"
+  echo "salt-where [-f] <state_name>"
+  echo "    -f - reuse the cached data from the last run (instant vs about 1 minute)"
+  echo "         the cached data is from running state.show_top on each minion"
+  exit 1
+}
+
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]] || [[ "$#" == 0 ]]
+then
+  usage
+fi
+
+if [[ "$1" == "-f" ]]
+then
+  fast="True"
+  shift
+fi
+
+mkdir -p ~/.show_tops
+cd ~/.show_tops
+
+j=$1
+if [[ $fast != "True" ]]
+then
+  for i in $(sudo salt-run manage.up | sed -e 's/- //')
+  do
+    (sudo salt "$i" state.show_top | tail -n +4 | head -n -10 > "$i") &
+  done
+fi
+
+wait
+grep -wl "$j" *
